@@ -134,3 +134,70 @@ Repo.one(from u in User, where: ilike(u.email, "%1%"), select: count(u.id))
 ```
 Repo.all(from u in User, select: %{u.id => u.email})
 ```
+
+# Context
+## Add Product
+```
+mix phx.gen.html Catalog Product products title:string description:string price:decimal views:integer
+```
+then ```in lib/hello_web/router.ex```:
+```
+  scope "/", HelloWeb do
+    pipe_through :browser
+
+    ...
+
+    resources "/products", ProductController
+  end
+```
+then
+```
+    mix ecto.migrate
+```
+then
+http://localhost:4000/products
+
+## Add Category
+```
+mix phx.gen.context Catalog Category categories title:string:unique
+```
+
+## Many-to-Many
+```
+mix ecto.gen.migration create_product_categories
+```
+update migration file:
+```
+defmodule Hello.Repo.Migrations.CreateProductCategories do
+  use Ecto.Migration
+
+  def change do
+    create table(:product_categories, primary_key: false) do
+      add :product_id, references(:products, on_delete: :delete_all)
+      add :category_id, references(:categories, on_delete: :delete_all)
+    end
+
+    create index(:product_categories, [:product_id])
+    create index(:product_categories, [:category_id])
+    create unique_index(:product_categories, [:product_id, :category_id])
+  end
+end
+```
+then
+```
+mix ecto.migrate
+```
+then create content priv/repo/seeds.exs:
+```
+for title <- ["Home Improvement", "Power Tools", "Gardening", "Books"] do
+  {:ok, _} = Hello.Catalog.create_category(%{title: title})
+end
+```
+then:
+```
+mix run priv/repo/seeds.exs
+```
+add many-to-manyy relation in lib/hello/catalog/product.ex
+```
+many_to_many :categories, Category, join_through: "product_categories", on_replace: :delete
+```
